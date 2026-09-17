@@ -1,0 +1,441 @@
+<!DOCTYPE html>  <html lang="en">  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+<title>SeaSafe — Detect. Trace. Protect.</title>  
+<meta name="description" content="SeaSafe is an AI-powered maritime intelligence platform that detects oil spills from satellite imagery and correlates them with vessel AIS data for evidence-based investigation.">  
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>">  
+<link rel="preconnect" href="https://fonts.googleapis.com">  
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">  
+<style>  
+  :root{  
+    --navy-950:#050c14;  
+    --navy-900:#081420;  
+    --navy-800:#0c1c2c;  
+    --navy-700:#13293d;  
+    --ocean-600:#1a3a52;  
+    --cyan-400:#4dd8e8;  
+    --cyan-300:#8be9f2;  
+    --cyan-glow:rgba(77,216,232,0.35);  
+    --spill-500:#c98a4b;  
+    --spill-glow:rgba(201,138,75,0.35);  
+    --text-100:#eef4f8;  
+    --text-300:#b4c4d3;  
+    --text-500:#7e93a6;  
+    --line-soft:rgba(148,180,201,0.14);  
+    --line-mid:rgba(148,180,201,0.24);  
+    --radius-card:14px;  
+    --maxw:1200px;  
+  }  *{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+background:var(--navy-950);
+color:var(--text-100);
+font-family:'Inter',sans-serif;
+line-height:1.5;
+overflow-x:hidden;
+}
+h1,h2,h3,.display{
+font-family:'Space Grotesk',sans-serif;
+letter-spacing:-0.01em;
+}
+a{color:inherit;text-decoration:none;}
+img,svg{display:block;max-width:100%;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+ul{list-style:none;}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}
+
+:focus-visible{outline:2px solid var(--cyan-400);outline-offset:3px;border-radius:4px;}
+
+@media (prefers-reduced-motion: reduce){
+*{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important;}
+}
+
+/* ---------- background texture ---------- */
+.bg-ocean{
+position:fixed;inset:0;z-index:-2;
+background:
+radial-gradient(ellipse 900px 600px at 78% 8%, rgba(28,74,102,0.35), transparent 60%),
+radial-gradient(ellipse 700px 500px at 10% 90%, rgba(18,50,72,0.3), transparent 65%),
+linear-gradient(180deg, var(--navy-950) 0%, var(--navy-900) 45%, var(--navy-950) 100%);
+}
+.bg-grid{
+position:fixed;inset:0;z-index:-1;
+background-image:
+linear-gradient(var(--line-soft) 1px, transparent 1px),
+linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+background-size:64px 64px;
+opacity:0.35;
+mask-image:radial-gradient(ellipse 70% 60% at 60% 20%, black 20%, transparent 75%);
+}
+
+/* ---------- navbar ---------- */
+header{
+position:fixed;top:0;left:0;right:0;z-index:100;
+background:rgba(5,12,20,0.72);
+backdrop-filter:blur(14px) saturate(140%);
+-webkit-backdrop-filter:blur(14px) saturate(140%);
+border-bottom:1px solid var(--line-soft);
+}
+nav.wrap{
+display:flex;align-items:center;justify-content:space-between;
+height:72px;
+}
+.brand{
+display:flex;align-items:center;gap:10px;
+font-family:'Space Grotesk',sans-serif;
+font-weight:600;font-size:18px;letter-spacing:0.01em;
+}
+.brand .mark{width:30px;height:30px;flex-shrink:0;}
+.nav-links{
+display:flex;align-items:center;gap:36px;
+font-size:14.5px;font-weight:500;color:var(--text-300);
+}
+.nav-links a:not(.btn){position:relative;padding:6px 0;transition:color .2s ease;}
+.nav-links a:not(.btn):hover{color:var(--text-100);}
+.nav-links a:not(.btn)::after{
+content:"";position:absolute;left:0;bottom:0;height:1px;width:0;
+background:var(--cyan-400);transition:width .25s ease;
+}
+.nav-links a:not(.btn):hover::after{width:100%;}
+
+.btn{
+display:inline-flex;align-items:center;gap:8px;
+padding:11px 22px;border-radius:8px;
+font-size:14.5px;font-weight:600;
+transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+white-space:nowrap;
+}
+.btn:active{transform:translateY(1px);}
+.btn-primary{
+background:linear-gradient(135deg, var(--cyan-400), #2fb9cc);
+color:var(--navy-950);
+}
+.btn-primary:hover{box-shadow:0 8px 24px -6px var(--cyan-glow);transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--text-100);border:1px solid var(--line-soft);}
+.btn-ghost:hover{border-color:rgba(77,216,232,0.5);background:rgba(77,216,232,0.06);}
+.btn-sm{padding:9px 16px;font-size:13.5px;}
+
+.hamburger{
+display:none;
+width:38px;height:38px;
+align-items:center;justify-content:center;
+border:1px solid var(--line-soft);border-radius:8px;
+}
+.hamburger span{
+display:block;width:16px;height:1.5px;background:var(--text-100);
+position:relative;
+transition:transform .25s ease, opacity .25s ease;
+}
+.hamburger span::before,.hamburger span::after{
+content:"";position:absolute;left:0;width:16px;height:1.5px;background:var(--text-100);
+transition:transform .25s ease, top .25s ease;
+}
+.hamburger span::before{top:-5px;}
+.hamburger span::after{top:5px;}
+.hamburger[aria-expanded="true"] span{background:transparent;}
+.hamburger[aria-expanded="true"] span::before{top:0;transform:rotate(45deg);}
+.hamburger[aria-expanded="true"] span::after{top:0;transform:rotate(-45deg);}
+
+.mobile-panel{
+display:none;
+position:fixed;top:72px;left:0;right:0;z-index:99;
+background:rgba(6,14,22,0.98);
+border-bottom:1px solid var(--line-soft);
+padding:10px 32px 26px;
+flex-direction:column;gap:4px;
+}
+.mobile-panel.open{display:flex;}
+.mobile-panel a{
+padding:14px 4px;font-size:15.5px;color:var(--text-300);
+border-bottom:1px solid var(--line-soft);
+}
+.mobile-panel a:last-of-type{border-bottom:none;}
+.mobile-panel .btn{margin-top:14px;justify-content:center;}
+
+/* ---------- reveal animation ---------- */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s ease;}
+.reveal.in-view{opacity:1;transform:translateY(0);}
+
+/* ---------- hero ---------- */
+.hero{padding:168px 0 90px;position:relative;}
+.hero-grid{display:grid;grid-template-columns:1.02fr 1fr;gap:56px;align-items:center;}
+.status-pill{
+display:inline-flex;align-items:center;gap:8px;
+padding:7px 14px;border-radius:100px;
+border:1px solid var(--line-soft);
+background:rgba(255,255,255,0.02);
+font-size:12px;font-weight:600;color:var(--text-300);
+letter-spacing:0.04em;
+margin-bottom:28px;
+}
+.dot-live{
+width:7px;height:7px;border-radius:50%;
+background:var(--cyan-400);
+animation:pulseDot 2.4s ease-in-out infinite;
+}
+@keyframes pulseDot{
+0%{box-shadow:0 0 0 0 rgba(77,216,232,0.55);}
+70%{box-shadow:0 0 0 8px rgba(77,216,232,0);}
+100%{box-shadow:0 0 0 0 rgba(77,216,232,0);}
+}
+.hero h1{font-size:clamp(38px, 4.6vw, 60px);font-weight:700;line-height:1.06;color:var(--text-100);margin-bottom:22px;}
+.hero h1 .line2{color:var(--cyan-300);}
+.hero p.lead{font-size:17px;color:var(--text-300);max-width:490px;margin-bottom:30px;}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:26px;}
+.hero-trust-line{
+font-size:13px;color:var(--text-500);
+padding-top:24px;border-top:1px solid var(--line-soft);
+max-width:480px;
+}
+
+/* ---------- hero visual panel ---------- */
+.satpanel{
+position:relative;border-radius:16px;
+border:1px solid var(--line-mid);
+background:linear-gradient(155deg, rgba(19,41,61,0.55), rgba(8,20,32,0.7));
+box-shadow:0 30px 80px -20px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.02);
+padding:14px;
+backdrop-filter:blur(6px);
+}
+.satpanel-head{
+display:flex;align-items:center;justify-content:space-between;
+padding:2px 6px 12px;
+font-size:11.5px;color:var(--text-500);
+font-family:'Space Grotesk',sans-serif;letter-spacing:0.02em;
+}
+.satpanel-head .mode{
+display:flex;align-items:center;gap:6px;color:var(--spill-500);
+font-weight:600;letter-spacing:0.06em;
+}
+.mode-dot{width:6px;height:6px;border-radius:50%;background:var(--spill-500);animation:blink 1.8s steps(1) infinite;}
+@keyframes blink{50%{opacity:0.25;}}
+.sat-frame{
+position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1/1;
+background:
+radial-gradient(ellipse 500px 400px at 30% 25%, rgba(23,61,84,0.5), transparent 60%),
+linear-gradient(160deg, #06141f 0%, #0a2032 55%, #071825 100%);
+}
+.sat-frame svg{position:absolute;inset:0;width:100%;height:100%;}
+.scanline{
+position:absolute;left:0;right:0;height:120px;
+background:linear-gradient(180deg, transparent, rgba(77,216,232,0.10) 45%, rgba(77,216,232,0.02) 100%);
+animation:scan 6s linear infinite;
+pointer-events:none;
+}
+@keyframes scan{0%{top:-120px;}100%{top:100%;}}
+.sat-caption{
+display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;
+padding:12px 6px 2px;
+font-size:10.5px;color:var(--text-500);font-family:'Space Grotesk',sans-serif;
+}
+.sat-caption span b{color:var(--text-300);font-weight:600;}
+.sat-disclaimer{
+text-align:center;margin-top:10px;
+font-size:10.5px;color:var(--text-500);
+letter-spacing:0.03em;
+}
+
+/* ---------- capability strip ---------- */
+.capability{border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);}
+.cap-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+.cap-item{padding:0 24px;border-left:1px solid var(--line-soft);}
+.cap-item:first-child{border-left:none;padding-left:0;}
+.cap-item .cap-icon{width:34px;height:34px;color:var(--cyan-300);margin-bottom:16px;}
+.cap-item .cap-icon svg{width:100%;height:100%;}
+.cap-item h3{font-size:14.5px;font-weight:600;color:var(--text-100);margin-bottom:8px;letter-spacing:0.01em;}
+.cap-item p{font-size:13px;color:var(--text-500);line-height:1.55;}
+
+/* ---------- section shared ---------- */
+section{padding:110px 0;}
+.section-head{max-width:600px;margin-bottom:60px;}
+.section-head h2{font-size:clamp(28px,3.2vw,38px);font-weight:600;color:var(--text-100);margin-bottom:14px;}
+.section-head p{color:var(--text-300);font-size:16px;max-width:520px;}
+
+/* ---------- how it works ---------- */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;}
+.flow-step{position:relative;padding:0 26px 0 0;}
+.flow-step:not(:last-child)::after{
+content:"";position:absolute;top:23px;left:calc(100% - 24px);right:-2px;
+height:1px;background:linear-gradient(90deg, var(--line-mid), transparent);
+}
+.flow-step:not(:last-child)::before{
+content:"";position:absolute;top:19px;left:calc(100% - 12px);
+width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;
+border-left:5px solid var(--line-mid);
+}
+.flow-num{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--cyan-400);display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+.flow-num .num-box{
+width:46px;height:46px;border-radius:10px;
+border:1px solid rgba(77,216,232,0.3);background:rgba(77,216,232,0.06);
+display:flex;align-items:center;justify-content:center;color:var(--cyan-300);flex-shrink:0;
+}
+.flow-num .num-box svg{width:20px;height:20px;}
+.flow-step h3{font-size:15px;font-weight:600;color:var(--text-100);letter-spacing:0.02em;margin-bottom:8px;}
+.flow-step p{font-size:13.8px;color:var(--text-500);max-width:230px;}
+
+/* ---------- feature cards ---------- */
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-bottom:28px;}
+.fcard{
+padding:32px 28px;border-radius:var(--radius-card);
+border:1px solid var(--line-soft);
+background:linear-gradient(160deg, rgba(19,41,61,0.4), rgba(8,20,32,0.25));
+transition:border-color .25s ease, transform .25s ease;
+}
+.fcard:hover{border-color:rgba(77,216,232,0.35);transform:translateY(-3px);}
+.fcard .ficon{
+width:46px;height:46px;border-radius:10px;
+background:rgba(77,216,232,0.08);border:1px solid rgba(77,216,232,0.2);
+display:flex;align-items:center;justify-content:center;color:var(--cyan-300);margin-bottom:22px;
+}
+.fcard .ficon svg{width:22px;height:22px;}
+.fcard h3{font-size:17px;font-weight:600;margin-bottom:10px;color:var(--text-100);}
+.fcard p{font-size:14.5px;color:var(--text-500);}
+.disclaimer-note{
+display:flex;gap:10px;align-items:flex-start;
+padding:16px 20px;border-radius:10px;
+border:1px solid var(--line-soft);
+background:rgba(201,138,75,0.05);
+font-size:13.5px;color:var(--text-500);
+}
+.disclaimer-note svg{width:17px;height:17px;color:var(--spill-500);flex-shrink:0;margin-top:1px;}
+.disclaimer-note strong{color:var(--text-300);font-weight:600;}
+
+/* ---------- technology ---------- */
+.tech-tags{display:flex;flex-wrap:wrap;gap:12px;}
+.tech-tag{
+padding:11px 20px;border-radius:100px;
+border:1px solid var(--line-soft);
+font-size:13.5px;font-weight:500;color:var(--text-300);
+background:rgba(255,255,255,0.02);
+transition:border-color .2s ease, color .2s ease;
+}
+.tech-tag:hover{border-color:rgba(77,216,232,0.4);color:var(--cyan-300);}
+
+/* ---------- final cta ---------- */
+.cta-section{position:relative;padding:110px 0;overflow:hidden;}
+.cta-panel{
+position:relative;border-radius:20px;padding:76px 48px;text-align:center;
+border:1px solid var(--line-mid);
+background:
+radial-gradient(ellipse 600px 300px at 50% 0%, rgba(77,216,232,0.12), transparent 70%),
+linear-gradient(160deg, rgba(19,41,61,0.55), rgba(8,20,32,0.6));
+overflow:hidden;
+}
+.cta-panel h2{font-size:clamp(28px,4vw,42px);font-weight:700;color:var(--text-100);max-width:640px;margin:0 auto 16px;}
+.cta-panel p{color:var(--text-300);font-size:16px;margin-bottom:34px;}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line-soft);padding:56px 0 40px;}
+.foot-top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:32px;margin-bottom:36px;}
+.foot-brand .brand{margin-bottom:10px;}
+.foot-brand p{color:var(--text-500);font-size:13.5px;}
+.foot-links{display:flex;gap:36px;flex-wrap:wrap;}
+.foot-col h4{font-size:12.5px;color:var(--text-500);font-weight:600;margin-bottom:14px;letter-spacing:0.03em;}
+.foot-col a{display:block;font-size:14px;color:var(--text-300);margin-bottom:10px;transition:color .2s;}
+.foot-col a:hover{color:var(--cyan-300);}
+.foot-bottom{
+display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
+padding-top:26px;border-top:1px solid var(--line-soft);
+font-size:12.5px;color:var(--text-500);
+}
+.badge{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:100px;border:1px solid var(--line-soft);color:var(--text-300);}
+
+/* ---------- responsive ---------- */
+@media (max-width:980px){
+.hero-grid{grid-template-columns:1fr;}
+.satpanel{max-width:520px;}
+.nav-links{display:none;}
+.hamburger{display:flex;}
+.flow{grid-template-columns:1fr 1fr;row-gap:44px;}
+.flow-step::after,.flow-step::before{display:none;}
+.features{grid-template-columns:1fr;}
+.cap-grid{grid-template-columns:1fr 1fr;row-gap:32px;}
+.cap-item:nth-child(3){border-left:none;padding-left:0;}
+.capability{padding:56px 0;}
+}
+@media (max-width:560px){
+.wrap{padding:0 20px;}
+.hero{padding:140px 0 60px;}
+.flow{grid-template-columns:1fr;}
+.cta-panel{padding:56px 26px;}
+.foot-top{flex-direction:column;}
+.cap-grid{grid-template-columns:1fr;}
+.cap-item{border-left:none;padding-left:0;}
+}
+</style>
+
+</head>  
+<body>  <div class="bg-ocean"></div>  
+<div class="bg-grid"></div>  <header>  
+  <nav class="wrap">  
+    <div class="brand">  
+      <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">  
+        <circle cx="16" cy="16" r="15" stroke="#4dd8e8" stroke-width="1.3" opacity="0.5"/>  
+        <path d="M6 19c2.5 2 4.5 2 7 0s4.5-2 7 0 4.5 2 6 0" stroke="#4dd8e8" stroke-width="1.6" stroke-linecap="round" fill="none"/>  
+        <path d="M6 23c2.5 2 4.5 2 7 0s4.5-2 7 0 4.5 2 6 0" stroke="#8be9f2" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.6"/>  
+        <circle cx="16" cy="11" r="2.3" fill="#4dd8e8"/>  
+      </svg>  
+      SEASAFE  
+    </div>  <div class="nav-links" id="navLinks">  
+  <a href="#top">Home</a>  
+  <a href="#how-it-works">How It Works</a>  
+  <a href="#technology">Technology</a>  
+  <a href="#about">About</a>  
+  <a href="#launch" class="btn btn-primary btn-sm">Launch Platform</a>  
+</div>  
+
+<button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobilePanel">  
+  <span></span>  
+</button>
+
+  </nav>    <div class="mobile-panel" id="mobilePanel">  
+    <a href="#top">Home</a>  
+    <a href="#how-it-works">How It Works</a>  
+    <a href="#technology">Technology</a>  
+    <a href="#about">About</a>  
+    <a href="#launch" class="btn btn-primary">Launch Platform</a>  
+  </div>  
+</header>  <main id="top">    <!-- HERO -->    <section class="hero">  
+    <div class="wrap hero-grid">  
+      <div>  
+        <div class="status-pill reveal"><span class="dot-live"></span> AI-POWERED MARITIME INTELLIGENCE</div>  
+        <h1 class="reveal">See the Spill.<br><span class="line2">Trace the Source.</span></h1>  
+        <p class="lead reveal">Detect oil spills from satellite imagery, correlate maritime activity with AIS data, and investigate possible source vessels through evidence-based analysis.</p>  
+        <div class="hero-actions reveal">  
+          <a href="#launch" class="btn btn-primary">Launch SeaSafe</a>  
+          <a href="#how-it-works" class="btn btn-ghost">Explore How It Works</a>  
+        </div>  
+        <p class="hero-trust-line reveal">Satellite Intelligence &bull; AIS Correlation &bull; GIS Analysis</p>  
+      </div>  <div class="satpanel reveal">  
+    <div class="satpanel-head">  
+      <span>SAT-FEED · SECTOR 14B</span>  
+      <span class="mode"><span class="mode-dot"></span> DEMO SIMULATION</span>  
+    </div>  
+    <div class="sat-frame" id="satFrame">  
+      <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulated satellite view showing a detected oil spill, vessel markers and estimated origin zone">  
+        <defs>  
+          <radialGradient id="spillGrad" cx="50%" cy="50%" r="60%">  
+            <stop offset="0%" stop-color="#3a2414" stop-opacity="0.95"/>  
+            <stop offset="55%" stop-color="#5c3a1e" stop-opacity="0.75"/>  
+            <stop offset="100%" stop-color="#c98a4b" stop-opacity="0"/>  
+          </radialGradient>  
+          <radialGradient id="originGlow" cx="50%" cy="50%" r="50%">  
+            <stop offset="0%" stop-color="#c98a4b" stop-opacity="0.25"/>  
+            <stop offset="100%" stop-color="#c98a4b" stop-opacity="0"/>  
+          </radialGradient>  
+        </defs>  
+
+        <g stroke="rgba(148,180,201,0.14)" stroke-width="1">  
+          <line x1="0" y1="100" x2="600" y2="100"/>  
+          <line x1="0" y1="200" x2="600" y2="200"/>  
+          <line x1="0" y1="300" x2="600" y2="300"/>  
+          <line x1="0" y1="400" x2="600" y2="400"/>  
+          <line x1="0" y1="500" x2="600" y2="500"/>  
+          <line x1="100" y1="0" x2="100" y2="600"/>  
+          <line x1="200" y1="0" x2="200" y2="600"/>  
+          <line x1="300" y1="0" x2="300" y2="600"/>  
+          <line x1="400" y1="0" x2="400" y2="600"/>  
+          <line x1="500" y1="0" x2="500" y2="600"/>
